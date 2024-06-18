@@ -1,0 +1,181 @@
+pipeline:
+  name: CI Actual Pipeline
+  identifier: CI_Actual_Pipeline
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Start the Build
+        identifier: Start_the_Build
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: Aditya_Standard_Type_Cluster
+              namespace: default
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Start Build Process
+                  identifier: Start_Build_Process
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: <+input>
+                    shell: Bash
+                    command: |-
+                      input=<+pipeline.variables.build_type>
+
+                      echo <+pipeline.variables.application_submodules>
+
+                      # a='<+pipeline.variables.application_submodules>'
+
+                      # modules=$(echo "$a" | tr -d '[]"')
+
+                      # echo "$modules"
+
+
+
+                      if [ "$input" = "maven" ]; then
+                        echo "The input is equal to maven"
+                      elif [ "$input" = "gradle" ]; then
+                        
+                        echo "The input is equal to gradle"
+                      elif [ "$input" = "node" ]; then
+                        echo "The input is equal to node"
+                      elif [ "$input" = "python" ]; then
+                        echo "The input is equal to python"
+                      else
+                        echo "The input is not within the range of 1 to 4"
+                      fi
+                    outputVariables:
+                      - name: modules
+              - parallel:
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Push to Docker
+                      identifier: Push_to_Docker
+                      spec:
+                        connectorRef: account.harnessImage
+                        repo: docker_repo
+                        tags:
+                          - "1.0"
+                        dockerfile: /harness/<+repeat.item>
+                      when:
+                        stageStatus: Success
+                        condition: <+pipeline.pipeline.variables.application_packaging_type> == "docker"
+                      strategy:
+                        repeat:
+                          items: <+pipeline.variables.application_submodules.split(',')>
+                          maxConcurrency: 2
+                  - step:
+                      type: S3Upload
+                      name: Push to S3
+                      identifier: Push_To_S3
+                      spec:
+                        connectorRef: AWS_Connector
+                        region: us-east-1
+                        bucket: test
+                        sourcePath: test
+                      when:
+                        stageStatus: Success
+                        condition: <+pipeline.pipeline.variables.application_packaging_type>=="zipp"
+              - step:
+                  type: Run
+                  name: Git Tag Creation
+                  identifier: Git_Tag_Creation
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: default
+                    shell: Sh
+                    command: "try{\n                       \twithCredentials([gitUsernamePassword(credentialsId: 'msbuild-token', gitToolName: 'git-tool')]) {\n                    \t\ttag_version = sh(returnStdout: true, script: \"\"\"\n                                       set +x\n                                        echo git tag -a \"branch-${env.BRANCH_NAME}-build-${BUILD_NUMBER}-tag\" -m \"branch-${env.BRANCH_NAME}-build-${BUILD_NUMBER}-tag\"\n                                        git tag -a \"branch-${env.BRANCH_NAME}-build-${BUILD_NUMBER}-tag\" -m \"branch-${env.BRANCH_NAME}-build-${BUILD_NUMBER}-tag\"\n                                        git push --tags\n                                    \"\"\").trim()\n                      }\n                    }\n                    catch(Exception ex)\n                    {\n                      echo 'Tag creation failed.' + ex.toString()\n                    }\n\n                if(isAutoTagCreationRequired){\n                    withCredentials([gitUsernamePassword(credentialsId: 'msbuild', gitToolName: 'git-tool')]) {\n \t\t\t\t\t\t        full_version = sh(returnStdout: true, script: \"\"\"\n\t                      set +x\n\t                      git fetch --tags\n\t                      HEAD_VERSION_COUNT=\\$(git tag -l --points-at HEAD | grep -E '^tag-release-[0-9].[0-9]' | wc -l)\n\t                      if [ \\$HEAD_VERSION_COUNT -eq 0 ]\n\t                      then\n\t                      \t  echo \"creating new tag\"\n\t                          MAJOR_MINOR=\\$(cat VERSION.txt | cut -d \".\" -f1)\n\t                          LAST_FULL=\\$(git tag -l | grep tag-release-\\$MAJOR_MINOR | sort -V -r | head -n 1)\n\t                          LAST_PATCH=\\$(echo \"\\$LAST_FULL\" | cut -d \".\" -f 2)\n\t                          if [ -z \"\\$LAST_PATCH\" ]\n\t                          then\n\t                            CURRENT_PATCH=0\n\t                          else\n\t                            CURRENT_PATCH=\\$((LAST_PATCH+1))\n\t                          fi\n\t                          FULL_VERSION=\"\\$MAJOR_MINOR.\\$CURRENT_PATCH\"\n\t                          git tag tag-release-\\$FULL_VERSION\n\t                          git push --tags\n\t                      else\n\t                      \t  echo \"tag is already present\"\n\t                          FULL_VERSION=\\$(git tag -l --points-at HEAD | grep -E '^tag-release-[0-9].[0-9]' | sort -V -r | head -n 1 | cut -c 13-)\n\t                      fi\n\t                      echo \\$FULL_VERSION\n\t                    \"\"\").trim()\n              \t\t\techo \"full_version: ${full_version}\"\n\t\t\t\t\t}\n                }"
+              - step:
+                  type: Run
+                  name: Tag and Branch Version
+                  identifier: Tag_and_Branch_Version
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: default
+                    shell: Sh
+                  when:
+                    stageStatus: Success
+                    condition: <+codebase.pipeline.properties.ci.codebase.build.spec.branch>=="master"
+              - step:
+                  type: Run
+                  name: Bake
+                  identifier: Bake
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: <+input>
+                    shell: Sh
+                  when:
+                    stageStatus: Success
+                    condition: |-
+                      <+codebase.pipeline.branch.matches("^release-.*")> || 
+                      <+codebase.pipeline.branch> == "develop" || 
+                      <+codebase.pipeline.branch> == "master" || 
+                      <+codebase.pipeline.branch> == "develop_golden_copy" || 
+                      <+codebase.pipeline.branch> == "staging" || 
+                      <+codebase.pipeline.branch> == "cpact_redesign_develop" ||
+                      <+codebase.pipeline.branch.matches("^tag-.*")>
+              - step:
+                  type: Run
+                  name: Deploy
+                  identifier: Deploy
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: <+input>
+                    shell: Sh
+                  when:
+                    stageStatus: Success
+                    condition: |-
+                      <+codebase.pipeline.branch> == "master" || 
+                      <+codebase.pipeline.branch> == "develop" || 
+                      <+codebase.pipeline.branch> == "cpact_redesign_develop" || 
+                      <+codebase.pipeline.branch> == "develop_golden_copy"
+              - step:
+                  type: Run
+                  name: Deploy Tag
+                  identifier: Deploy_Tag
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: <+input>
+                    shell: Sh
+                  when:
+                    stageStatus: Success
+                    condition: |-
+                      <+codebase.pipeline.branch> != "master" || 
+                      <+codebase.pipeline.branch> != "develop" || 
+                      <+codebase.pipeline.branch> != "cpact_redesign_develop" || 
+                      <+codebase.pipeline.branch> != "develop_golden_copy"
+          caching:
+            enabled: false
+            paths: []
+  variables:
+    - name: build_type
+      type: String
+      description: ""
+      required: true
+      value: <+input>
+    - name: application_packaging_type
+      type: String
+      description: ""
+      required: true
+      value: <+input>
+    - name: application_submodules
+      type: String
+      description: ""
+      required: true
+      value: <+input>
+  properties:
+    ci:
+      codebase:
+        repoName: <+input>
+        build: <+input>
