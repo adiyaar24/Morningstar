@@ -1,0 +1,155 @@
+pipeline:
+  name: CD MorningStar
+  identifier: CD_MorningStart
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Parse Application Details
+        identifier: CI_Part
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: Aditya_Standard_Type_Cluster
+              namespace: default
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Parse Application Manifest
+                  identifier: Parse_Application_Manifest
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: default
+                    shell: Sh
+                    command: |-
+                      #parse application manifest over here
+
+
+                      <+pipeline.variables.deploy_submodule>
+          caching:
+            enabled: false
+            paths: []
+    - stage:
+        name: Approval
+        identifier: Approval
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Prod Deployment Approval
+                  identifier: Prod_Deployment_Approval
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Please review the following information
+                      and approve the pipeline progression
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      minimumCount: 1
+                      disallowPipelineExecutor: true
+                      userGroups:
+                        - account._account_all_users
+                    isAutoRejectEnabled: false
+                    approverInputs: []
+        tags: {}
+        when:
+          pipelineStatus: Success
+          condition: <+pipeline.pipeline.variables.deploy_env>=="prd"
+    - stage:
+        name: CD Pipeline Component 1
+        identifier: CD_Pipeline
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: account.GuestBook_Service
+          environment:
+            environmentRef: account.Prod_Env
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: harness_K8sInfra
+                inputs:
+                  identifier: harness_K8sInfra
+                  type: KubernetesDirect
+                  spec:
+                    provisioner: <+input>
+          execution:
+            steps:
+              - step:
+                  type: K8sRollingDeploy
+                  name: Rollout Deployment
+                  identifier: Rollout_Deployment
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+                  timeout: 10m
+            rollbackSteps: []
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        when:
+          pipelineStatus: Success
+          condition: <+pipleine.pipeline.variables.deploy_submodule> == "all" || <+pipleine.pipeline.variables.deploy_submodule.contains("component1")>
+    - stage:
+        name: CI Test
+        identifier: CI_Test
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            useFromStage: CI_Part
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run Tests
+                  identifier: Run_Tests
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: default
+                    shell: Sh
+                    command: "# Run Tests"
+  variables:
+    - name: docker_image_tag
+      type: String
+      description: ""
+      required: true
+      value: <+input>
+    - name: deploy_aws_account
+      type: String
+      description: ""
+      required: true
+      value: <+input>.allowedValues(mi-nonprod,mi-prod)
+    - name: deploy_env
+      type: String
+      description: ""
+      required: true
+      value: <+input>.allowedValues(stg,prd,uat,dev,qa)
+    - name: deploy_submodule
+      type: String
+      description: a comma separated list of submodules to deploy. 'all' will deploy all submodules, or will do a normal deploy if no submodules are present
+      required: true
+      value: <+input>.default(all)
+  properties:
+    ci:
+      codebase:
+        repoName: Jenkins
+        build: <+input>
