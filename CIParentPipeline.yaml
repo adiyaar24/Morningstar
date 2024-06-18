@@ -1,0 +1,150 @@
+pipeline:
+  name: CI Jenkins Morningstar
+  identifier: CI_Jenkins_Morningstar
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  notificationRules:
+    - name: Microsoft Notification
+      identifier: Microsoft_Notification
+      pipelineEvents:
+        - type: AllEvents
+      notificationMethod:
+        type: Webhook
+        spec:
+          webhookUrl: https://url.us.m.mimecastprotect.com/s/dbQSCG6rB8tq5GpmhyBZlG?domain=morningstaronline.webhook.office.com
+      enabled: true
+  properties:
+    ci:
+      codebase:
+        repoName: Jenkins
+        build: <+input>
+  stages:
+    - stage:
+        name: Parse Application Manifest
+        identifier: Parse_Application_Manifest
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: Aditya_Standard_Type_Cluster
+              namespace: default
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Start Build Process
+                  identifier: Start_Build_Process
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: nginx
+                    shell: Bash
+                    command: |-
+                      echo "Hi"
+                      ls 
+
+                      echo "======="
+
+                      # cat manifest.properties
+
+                      echo "Setting Env Variables"
+                      MANIFEST_FILE="manifest.properties"
+                      while IFS= read -r line
+                      do
+                        # Skip empty lines and comments
+                        if [ -z "$line" ] || [ "${line:0:1}" = "#" ]; then
+                          continue
+                        fi
+                        
+                        # Extract the variable name and value
+                        var_name=$(echo "$line" | cut -d'=' -f1)
+                        var_value=$(echo "$line" | cut -d'=' -f2-)
+                        
+                        # Export the variable to the environment
+                        export "$var_name=$var_value"
+                      done < "$MANIFEST_FILE"
+
+                      # # Verify that variables are set (optional, for debugging)
+                      # env
+
+                      a=$(printenv application_submodules)
+                      modules=$(echo "$a" | tr -d '[]"')
+
+                      echo $modules
+                    outputVariables:
+                      - name: application_name
+                      - name: application_service_name
+                      - name: application_build_type
+                      - name: application_build_image
+                      - name: application_packaging_type
+                      - name: application_deployment_type
+                      - name: versioning
+                      - name: application_submodules
+                      - name: deployment_uses_workspaces
+                      - name: application_ci_map
+                      - name: deployment_terraform_image
+                      - name: application_allowed_test_env
+        when:
+          pipelineStatus: Success
+    - stage:
+        name: Run the Pipeline
+        identifier: Run_the_Pipeline
+        description: ""
+        type: Pipeline
+        spec:
+          org: default
+          pipeline: CI_Actual_Pipeline
+          project: default_project
+          inputs:
+            identifier: CI_Actual_Pipeline
+            stages:
+              - stage:
+                  identifier: Start_the_Build
+                  type: CI
+                  spec:
+                    execution:
+                      steps:
+                        - step:
+                            identifier: Start_Build_Process
+                            type: Run
+                            spec:
+                              image: <+pipeline.stages.Parse_Application_Manifest.spec.execution.steps.Start_Build_Process.output.outputVariables.application_build_type>
+                        - step:
+                            identifier: Bake
+                            type: Run
+                            spec:
+                              image: <+input>
+                        - step:
+                            identifier: Deploy
+                            type: Run
+                            spec:
+                              image: <+input>
+                        - step:
+                            identifier: Deploy_Tag
+                            type: Run
+                            spec:
+                              image: <+input>
+            variables:
+              - name: build_type
+                type: String
+                value: <+pipeline.stages.Parse_Application_Manifest.spec.execution.steps.Start_Build_Process.output.outputVariables.application_build_type>
+              - name: application_packaging_type
+                type: String
+                value: <+pipeline.stages.Parse_Application_Manifest.spec.execution.steps.Start_Build_Process.output.outputVariables.application_packaging_type>
+              - name: application_submodules
+                type: String
+                value: <+pipeline.stages.Parse_Application_Manifest.spec.execution.steps.Start_Build_Process.output.outputVariables.modules>
+            properties:
+              ci:
+                codebase:
+                  repoName: <+pipeline.properties.ci.codebase.repoName>
+                  build: <+input>
+          outputs: []
+        tags: {}
+  description: This Pipeline Fetches the Manifest.properties file and sets all the required env vars for the same
