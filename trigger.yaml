@@ -1,0 +1,20 @@
+trigger:
+  name: Custom
+  identifier: Custom
+  enabled: true
+  description: ""
+  tags: {}
+  stagesToExecute: []
+  orgIdentifier: default
+  projectIdentifier: default_project
+  pipelineIdentifier: BitBucket_Test
+  source:
+    type: Webhook
+    spec:
+      type: Custom
+      spec:
+        payloadConditions:
+          - key: <+trigger.payload.repository.slug>
+            operator: NotEquals
+            value: testing-repo1
+        headerConditions: []
