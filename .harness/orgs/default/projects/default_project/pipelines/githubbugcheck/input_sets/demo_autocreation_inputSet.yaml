@@ -5,7 +5,7 @@ inputSet:
   orgIdentifier: default
   projectIdentifier: default_project
   pipeline:
-    identifier: athenabugcheck
+    identifier: githubbugcheck
     variables:
       - name: var1
         type: String
