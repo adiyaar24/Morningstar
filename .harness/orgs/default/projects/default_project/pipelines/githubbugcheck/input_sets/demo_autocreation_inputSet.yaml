@@ -1,0 +1,12 @@
+inputSet:
+  name: inputsetoriginal
+  tags: {}
+  identifier: inputsetoriginal
+  orgIdentifier: default
+  projectIdentifier: default_project
+  pipeline:
+    identifier: athenabugcheck
+    variables:
+      - name: var1
+        type: String
+        value: "2"
