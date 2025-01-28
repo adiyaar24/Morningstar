@@ -9,4 +9,4 @@ inputSet:
     variables:
       - name: var1
         type: String
-        value: "2"
+        value: "3"
