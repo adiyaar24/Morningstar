@@ -14,6 +14,12 @@ pipeline:
           execution:
             steps:
               - step:
+                  type: Wait
+                  name: Wait_1
+                  identifier: Wait_1
+                  spec:
+                    duration: 30s
+              - step:
                   type: ShellScript
                   name: ShellScript_1
                   identifier: ShellScript_1
