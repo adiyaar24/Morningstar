@@ -34,7 +34,7 @@ pipeline:
                       #parse application manifest over here
 
 
-                      <+pipeline.variables.deploy_submodule.hh>
+                      <+pipeline.variables.deploy_subdddmodule.hh>
           caching:
             enabled: false
             paths: []
