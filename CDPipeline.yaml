@@ -34,7 +34,7 @@ pipeline:
                       #parse application manifest over here
 
 
-                      <+pipeline.variables.deploy_submodule>
+                      <+pipeline.variables.deploy_submodule.hh>
           caching:
             enabled: false
             paths: []
