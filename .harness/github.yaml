@@ -23,7 +23,30 @@ pipeline:
                     source:
                       type: Inline
                       spec:
-                        script: echo <+pipeline.variables.var17>
+                        script: |+
+                          #!/bin/bash
+
+                          # Check if Git is installed
+                          if command -v git &> /dev/null; then
+                              echo "Git is already installed."
+                          else
+                              echo "Git not found. Installing Git..."
+
+                              # Update the system and install required dependencies
+                              sudo yum update -y
+
+                              # Install Git using YUM
+                              sudo yum install git -y
+
+                              # Verify Git installation
+                              if command -v git &> /dev/null; then
+                                  echo "Git installed successfully."
+                              else
+                                  echo "Error: Git installation failed."
+                                  exit 1
+                              fi
+                          fi
+
                     environmentVariables: []
                     outputVariables: []
                   timeout: 10m
