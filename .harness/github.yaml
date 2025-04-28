@@ -6,6 +6,32 @@ pipeline:
   tags: {}
   stages:
     - stage:
+        name: Test
+        identifier: Test
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: Aditya_Standard_Type_Cluster
+              namespace: harness-delegate-ng
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run_1
+                  identifier: Run_1
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: bash
+                    shell: Sh
+                    command: echo <+eventPayload.repository.name>
+    - stage:
         name: Echo
         identifier: Echo
         description: ""
@@ -68,3 +94,9 @@ pipeline:
       description: ""
       required: false
       value: <+input>
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.Aditya_Github_Account_Connector
+        repoName: <+eventPayload.repository.name>
+        build: <+input>
