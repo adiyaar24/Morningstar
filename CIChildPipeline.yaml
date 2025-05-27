@@ -16,7 +16,7 @@ pipeline:
             type: KubernetesDirect
             spec:
               connectorRef: Aditya_Standard_Type_Cluster
-              namespace: default-2
+              namespace: default-21
               automountServiceAccountToken: true
               nodeSelector: {}
               os: Linux
