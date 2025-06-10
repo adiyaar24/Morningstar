@@ -5,7 +5,7 @@ metadata:
   description: My Sample service.
   tags: [my-sample]
   annotations:
-    'jfrog-artifactory/image-name': 'ken-docker-repo-1/cde/ubuntu'
+    'jfrog-artifactory/image-name': 'da-harness-qa-ai/gen-gateway/8/manifest.json'
     'jfrog.com/artifactory-artifact': 'gen-gateway'
     'jfrog.com/artifactory-repo': 'da-harness-qa-ai'
   links:
