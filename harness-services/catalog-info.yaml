@@ -4,15 +4,15 @@ metadata:
   name: aditya-sample-component
   description: My Sample service.
   tags: [my-sample]
-  'jfrog-artifactory/image-name': 'da-harness-qa-ai/gen-gateway/'
-  jfrog.com/artifactory-artifact: 'manager'
-  jfrog.com/artifactory-repo: 'docker-local'
-      
+  annotations:
+    'jfrog-artifactory/image-name': 'da-harness-qa-ai/gen-gateway/'
+    'jfrog.com/artifactory-artifact': 'manager'
+    'jfrog.com/artifactory-repo': 'docker-local'
   links:
     - title: Website
-      url: http://my-sample-website.com  
-    
+      url: http://my-sample-website.com
+      
 spec:
-  type: Service
+  type: service
   owner: "Harness_Account_All_Users"
-  lifecycle: experimental  
+  lifecycle: experimental
