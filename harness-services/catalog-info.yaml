@@ -6,8 +6,8 @@ metadata:
   tags: [my-sample]
   annotations:
     'jfrog-artifactory/image-name': 'da-harness-qa-ai/gen-gateway'
-    'jfrog.com/artifactory-artifact': 'manager'
-    'jfrog.com/artifactory-repo': 'docker-local'
+    'jfrog.com/artifactory-artifact': 'gen-gateway'
+    'jfrog.com/artifactory-repo': 'da-harness-qa-ai'
   links:
     - title: Website
       url: http://my-sample-website.com
