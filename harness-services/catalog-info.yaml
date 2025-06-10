@@ -4,6 +4,9 @@ metadata:
   name: aditya-sample-component
   description: My Sample service.
   tags: [my-sample]
+  metadata:
+    annotations:
+      'jfrog-artifactory/image-name': 'da-harness-qa-ai/gen-gateway/'
   links:
     - title: Website
       url: http://my-sample-website.com  
