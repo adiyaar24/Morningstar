@@ -10,6 +10,5 @@ metadata:
     
 spec:
   type: Service
-  owner: my-sample-team
-  lifecycle: experimental
-  system: my-sample-system
+  owner: "Harness_Account_All_Users"
+  lifecycle: experimental  
