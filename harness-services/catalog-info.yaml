@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aditya-sample-component
+  description: My Sample service.
+  tags: [my-sample]
+  links:
+    - title: Website
+      url: http://my-sample-website.com  
+    
+spec:
+  type: Service
+  owner: my-sample-team
+  lifecycle: experimental
+  system: my-sample-system
