@@ -1,5 +1,5 @@
 template:
-  name: test
+  name: ABC DEF
   identifier: test
   versionLabel: v1
   type: Stage
